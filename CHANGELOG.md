@@ -20,6 +20,9 @@ Changes are recorded here before a release is tagged. This file does not imply t
 
 ### Fixed
 
+- DMG now opens in a configured drag-to-Applications layout with installation instructions and an original app icon.
+
+
 - Closing direction now brings the top edge toward the viewer.
 - Stale capture callbacks are scoped to their session.
 - Unsuccessful sensor discovery closes its handles.

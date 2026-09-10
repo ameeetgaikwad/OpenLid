@@ -30,6 +30,8 @@ No workflow currently creates tags, publishes GitHub releases, uploads binaries,
 
 ## Development DMG and website
 
+The DMG uses Finder to save its icon positions and background during packaging, so packaging requires an interactive macOS session and permission to automate Finder. Eject any existing `OpenLid Install` volume before running it. Only the app and Applications shortcut appear at the image root; license and alpha notes are bundled in the app's Resources directory. Regenerate the committed original icon and installer artwork with `bash scripts/generate-assets.sh`.
+
 Run `bash scripts/build-dmg.sh` to build the app, package a host-architecture DMG, verify its container, and generate a SHA-256 checksum. The image contains an Applications shortcut, license, and alpha installation notes. This does not perform Developer ID signing or notarization. Keep development binaries in a draft release until the distribution checks above are complete.
 
 The static `website/` directory deploys through `.github/workflows/pages.yml`. Enable GitHub Pages with GitHub Actions as its build source. The page deliberately links to source and release listings until a validated public download exists. Its interactive preview is illustrative and does not read the visitor's lid sensor or capture their screen.
