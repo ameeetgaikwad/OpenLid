@@ -44,21 +44,21 @@ final class AppModel: ObservableObject {
         for event in [NSWorkspace.willSleepNotification, NSWorkspace.screensDidSleepNotification,
                       NSWorkspace.sessionDidResignActiveNotification] {
             observers.append(center.addObserver(forName: event, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.pause(message: "Paused for sleep or session change. Enable again when ready.") }
+                Task { @MainActor [weak self] in self?.pause(message: "Paused for sleep or session change. Enable again when ready.") }
             })
         }
         observers.append(NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                                object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.pause(message: "Display configuration changed. Enable again when ready.") }
+            Task { @MainActor [weak self] in self?.pause(message: "Display configuration changed. Enable again when ready.") }
         })
         lockObserver = DistributedNotificationCenter.default().addObserver(
             forName: NSNotification.Name("com.apple.screenIsLocked"), object: nil, queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.pause(message: "Paused while the screen is locked.") }
+            Task { @MainActor [weak self] in self?.pause(message: "Paused while the screen is locked.") }
         }
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 {
-                Task { @MainActor in self?.pause() }
+                Task { @MainActor [weak self] in self?.pause() }
             }
             return event
         }
@@ -122,14 +122,14 @@ final class AppModel: ObservableObject {
         generation += 1
         let run = generation
         renderer.onFrameExpired = { [weak self] in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self, self.generation == run else { return }
                 self.pause(message: "Capture stopped updating. Paused to restore your desktop.")
             }
         }
         let session = DesktopCapture(renderer: renderer)
         session.onFailure = { [weak self] message in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self, self.generation == run else { return }
                 self.pause(message: "Capture stopped: \(message)")
             }
@@ -148,7 +148,7 @@ final class AppModel: ObservableObject {
                 self.status = "Following your lid. Pause from the menu bar at any time."
                 self.failedReads = 0
                 self.timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
-                    Task { @MainActor in self?.tick() }
+                    Task { @MainActor [weak self] in self?.tick() }
                 }
             } catch {
                 guard let self, self.generation == run else { return }
