@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a reproducible OpenLid problem.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For vulnerabilities, follow SECURITY.md instead of posting details here.
+        Do not include serial numbers, credentials, or private screen content.
+  - type: input
+    id: build
+    attributes:
+      label: Commit or build
+      description: Paste the output of git rev-parse --short HEAD, or identify the downloaded build.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Hardware and macOS version
+      placeholder: MacBook Air M3, macOS 26; built-in display active
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Manual preview
+        - Live desktop effect
+        - Lid sensor
+        - Permissions or setup
+        - Build or installation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include selected style, relevant slider values, and permission state.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Optional diagnostics
+      description: Review output from --diagnostics before sharing. It does not start capture. Use synthetic content for any screenshots.
+      render: text

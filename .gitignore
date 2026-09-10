@@ -1,0 +1,16 @@
+.build/
+dist/
+.DS_Store
+.swiftpm/
+*.xcuserstate
+
+# Local agent session notes, not project documentation.
+docs/builds/
+
+# Local credentials and signing material.
+.env
+.env.*
+!.env.example
+*.p12
+*.p8
+*.mobileprovision
