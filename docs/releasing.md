@@ -27,3 +27,9 @@ These repository settings require an actual hosted repository. Files in this tre
 - Publish release notes listing tested hardware, known limitations, and exact source commit. Tag only the tested commit.
 
 No workflow currently creates tags, publishes GitHub releases, uploads binaries, or uses signing credentials. Add release automation only after this procedure has been exercised.
+
+## Development DMG and website
+
+Run `bash scripts/build-dmg.sh` to build the app, package a host-architecture DMG, verify its container, and generate a SHA-256 checksum. The image contains an Applications shortcut, license, and alpha installation notes. This does not perform Developer ID signing or notarization. Keep development binaries in a draft release until the distribution checks above are complete.
+
+The static `website/` directory deploys through `.github/workflows/pages.yml`. Enable GitHub Pages with GitHub Actions as its build source. The page deliberately links to source and release listings until a validated public download exists. Its interactive preview is illustrative and does not read the visitor's lid sensor or capture their screen.

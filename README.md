@@ -8,6 +8,8 @@ Native Swift + SwiftUI, ScreenCaptureKit, and Metal-backed Core Image. No depend
 
 ## Build and run
 
+The [OpenLid website](https://ameeetgaikwad.github.io/OpenLid/) includes an interactive, illustrative preview of the three styles. A notarized download is not available yet.
+
 Requires macOS 14+ and Swift 5.9+ (Xcode or Apple's Command Line Tools). The live effect requires a built-in display and an accessible Apple lid angle HID sensor. Not every Apple silicon MacBook exposes that sensor.
 
 ```sh
@@ -20,6 +22,8 @@ open dist/OpenLid.app
 The script creates an ad-hoc signed app for the current architecture. It uses workspace-local compiler caches and does not need an Apple developer account. `--disable-sandbox` affects SwiftPM's manifest subprocess only; it does not change macOS security settings. There are no remote package dependencies.
 
 For everyday use, copy the built app to a stable location such as Applications before granting Screen Recording permission. Rebuilding an ad-hoc signed app can invalidate macOS's previous permission grant.
+
+To package a local development DMG, run `bash scripts/build-dmg.sh`. It creates a host-architecture image and SHA-256 checksum in `dist/`, containing OpenLid and an Applications shortcut. This artifact is ad-hoc signed and not notarized; public binary distribution remains pending validation.
 
 ## Try it
 

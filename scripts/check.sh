@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-bash -n scripts/build-app.sh scripts/test.sh scripts/check.sh
+bash -n scripts/build-app.sh scripts/build-dmg.sh scripts/test.sh scripts/check.sh
 plutil -lint Resources/Info.plist
 bash scripts/test.sh
 bash scripts/build-app.sh

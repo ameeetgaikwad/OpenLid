@@ -6,6 +6,9 @@ Changes are recorded here before a release is tagged. This file does not imply t
 
 ### Added
 
+- Static website with an interactive three-style preview and GitHub Pages deployment.
+- Development DMG packaging with an Applications shortcut and SHA-256 checksum.
+
 - Native macOS menu-bar app with a manual folding preview.
 - Paper, Dusk, and Mist appearance styles, saved effect settings, and an adjustable clear angle.
 - Read-only MacBook lid sensor discovery and diagnostics.
