@@ -40,6 +40,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model = AppModel()
+        // Window key equivalents are dispatched through the application menu,
+        // not the status item's popup menu.
+        let mainMenu = NSMenu()
+        let applicationItem = NSMenuItem()
+        let applicationMenu = NSMenu(title: "OpenLid")
+        let applicationQuit = NSMenuItem(title: "Quit OpenLid", action: #selector(quitApp), keyEquivalent: "q")
+        applicationQuit.keyEquivalentModifierMask = [.command]
+        applicationQuit.target = self
+        applicationMenu.addItem(applicationQuit)
+        applicationItem.submenu = applicationMenu
+        mainMenu.addItem(applicationItem)
+        NSApp.mainMenu = mainMenu
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = NSImage(systemSymbolName: "laptopcomputer", accessibilityDescription: "OpenLid")
         statusItem.button?.toolTip = "OpenLid: neutral lid effects"
@@ -81,7 +93,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func quitApp() {
-        model.pause()
         NSApp.terminate(nil)
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        model.pause()
     }
 }
