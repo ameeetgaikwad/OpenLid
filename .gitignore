@@ -14,3 +14,5 @@ docs/builds/
 *.p12
 *.p8
 *.mobileprovision
+
+node_modules/
