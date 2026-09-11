@@ -8,7 +8,7 @@ Native Swift + SwiftUI, ScreenCaptureKit, and Metal compute and Metal Performanc
 
 ## Build and run
 
-The [OpenLid website](https://ameeetgaikwad.github.io/OpenLid/) includes an interactive, illustrative preview of the three styles. An unnotarized testing prerelease is available from [GitHub Releases](https://github.com/ameeetgaikwad/OpenLid/releases).
+The [OpenLid website](https://open-lid.vercel.app/) includes an interactive, illustrative preview of the three styles. An unnotarized testing prerelease is available from [GitHub Releases](https://github.com/ameeetgaikwad/OpenLid/releases).
 
 Requires macOS 14+ and Swift 5.9+ (Xcode or Apple's Command Line Tools). The live effect requires a built-in display and an accessible Apple lid angle HID sensor. Not every Apple silicon MacBook exposes that sensor.
 
