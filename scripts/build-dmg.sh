@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 bash scripts/build-app.sh
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' dist/OpenLid.app/Contents/Info.plist)"
 ARCH="$(lipo -archs dist/OpenLid.app/Contents/MacOS/OpenLid | tr ' ' '-')"
-NAME="OpenLid-${VERSION}-alpha.4-${ARCH}.dmg"
+NAME="OpenLid-${VERSION}-alpha.5-${ARCH}.dmg"
 MOUNT="/Volumes/OpenLid Install"
 if [[ -e "$MOUNT" ]]; then
     echo "Eject OpenLid Install before packaging again." >&2

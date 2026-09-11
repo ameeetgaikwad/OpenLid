@@ -2,8 +2,10 @@
 
 Changes are recorded here before a release is tagged. This file does not imply that a downloadable release exists.
 
-## Unreleased
+## 0.1.0-alpha.5 - 2026-09-11
 
+- Command-Q now quits from the settings window and stops the live effect.
+- Website preview illustrates the updated styles and links to alpha.5.
 - Dusk now fades substantially darker; Paper gains a warm matte finish and a shaded crease with minimal blur. Mist remains the default soft-focus style.
 
 ## 0.1.0-alpha.4 - 2026-09-11
