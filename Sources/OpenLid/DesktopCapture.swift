@@ -10,7 +10,7 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
 
     init(renderer: FoldRenderer) { self.renderer = renderer }
 
-    @MainActor func start(displayID: CGDirectDisplayID, overlay: NSPanel, pixelSize: CGSize) async throws {
+    @MainActor func start(displayID: CGDirectDisplayID, overlay: NSPanel, pixelSize: CGSize, sourceRect: CGRect) async throws {
         // Register an empty transparent panel before filtering. It cannot obscure the desktop.
         overlay.orderFrontRegardless()
         defer { overlay.orderOut(nil) }
@@ -25,6 +25,9 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
         }) else { throw CaptureError.missingExclusion }
         let filter = SCContentFilter(display: display, excludingWindows: [excluded])
         let config = SCStreamConfiguration()
+        // Display-local coordinates use a top-left origin. Match the below-menu
+        // overlay exactly instead of scaling a full-display capture into it.
+        config.sourceRect = sourceRect
         let scale = min(1, 3840 / pixelSize.width)
         config.width = max(1, Int(pixelSize.width * scale))
         config.height = max(1, Int(pixelSize.height * scale))

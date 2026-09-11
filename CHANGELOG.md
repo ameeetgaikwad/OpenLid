@@ -2,6 +2,11 @@
 
 Changes are recorded here before a release is tagged. This file does not imply that a downloadable release exists.
 
+## 0.1.0-alpha.6 - 2026-09-11
+
+- Exclude the menu-bar strip from the live capture and overlay to prevent duplicated menu text. Reserve the notch/menu area when the menu bar auto-hides.
+- Live verification of this fix remains pending.
+
 ## 0.1.0-alpha.5 - 2026-09-11
 
 - Command-Q now quits from the settings window and stops the live effect.

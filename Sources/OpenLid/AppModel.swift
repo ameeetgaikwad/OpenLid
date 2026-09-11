@@ -103,7 +103,14 @@ final class AppModel: ObservableObject {
             status = "Metal rendering is unavailable on this Mac."
             return
         }
-        let panel = NSPanel(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        // Reserve the menu bar (including the notch area) even when it auto-hides.
+        // A captured copy underneath the translucent system bar produces doubled text.
+        let menuHeight = max(NSStatusBar.system.thickness,
+                             max(screen.safeAreaInsets.top, screen.frame.maxY - screen.visibleFrame.maxY))
+        let effectFrame = CGRect(x: screen.frame.minX, y: screen.frame.minY,
+                                 width: screen.frame.width, height: max(1, screen.frame.height - menuHeight))
+        let sourceRect = CGRect(x: 0, y: menuHeight, width: effectFrame.width, height: effectFrame.height)
+        let panel = NSPanel(contentRect: effectFrame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         panel.ignoresMouseEvents = true
@@ -142,11 +149,11 @@ final class AppModel: ObservableObject {
                     return
                 }
                 self.sensorAngle = angle
-                let pixelSize = CGSize(width: screen.frame.width * screen.backingScaleFactor,
-                                       height: screen.frame.height * screen.backingScaleFactor)
-                try await session.start(displayID: screen.displayID, overlay: panel, pixelSize: pixelSize)
+                let pixelSize = CGSize(width: effectFrame.width * screen.backingScaleFactor,
+                                       height: effectFrame.height * screen.backingScaleFactor)
+                try await session.start(displayID: screen.displayID, overlay: panel, pixelSize: pixelSize, sourceRect: sourceRect)
                 guard self.generation == run, !Task.isCancelled else { return }
-                renderer.view.frame = CGRect(origin: .zero, size: screen.frame.size)
+                renderer.view.frame = CGRect(origin: .zero, size: effectFrame.size)
                 panel.contentView = renderer.view
                 self.motion = LidMotion(angle: max(angle, self.settings.sanitized().clearAngle))
                 self.lastTick = ProcessInfo.processInfo.systemUptime
