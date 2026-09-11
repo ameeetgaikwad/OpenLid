@@ -12,7 +12,7 @@ if [[ -e "$MOUNT" ]]; then
 fi
 STAGING="$(mktemp -d "$PWD/dist/dmg-stage.XXXXXX")"
 cleanup() {
-    if mount | grep -Fq " on $MOUNT "; then hdiutil detach "$MOUNT" || return; fi
+    if mount | grep -Fq " on $MOUNT ("; then hdiutil detach "$MOUNT" || return; fi
     rm -rf "$STAGING"
     if [[ -d "$MOUNT" ]]; then rmdir "$MOUNT"; fi
 }
