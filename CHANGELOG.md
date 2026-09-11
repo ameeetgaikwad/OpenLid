@@ -2,7 +2,19 @@
 
 Changes are recorded here before a release is tagged. This file does not imply that a downloadable release exists.
 
-## Unreleased
+## 0.1.0-alpha.3 - 2026-09-11
+
+- Replace per-frame Core Image graph work with reusable Metal compute pipelines and cached Metal Performance Shaders blur.
+- Move lid sensor sampling off the UI thread, limit queued rendering, and avoid redundant preview and window updates.
+- Keep the desktop covered during lid motion, preserve OpenLid settings in capture, and use the same renderer for the generated preview.
+- Distinguish Paper, Dusk, and Mist with neutral shading and softness.
+- Add generated-frame performance diagnostics and pixel/geometry checks.
+- Select Mist by default on the website and link its primary buttons to the Apple silicon alpha installer.
+- Remove the floating permission helper in favor of the macOS Screen Recording flow.
+
+Validation: 4462 core assertions and 21 generated-pixel checks passed. Local rendering measurements are documented in `docs/performance.md`; they do not measure sustained live FPS. This alpha remains ad-hoc signed and not notarized.
+
+## Earlier alpha development
 
 ### Added
 
