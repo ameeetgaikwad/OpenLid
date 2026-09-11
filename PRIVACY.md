@@ -2,10 +2,10 @@
 
 OpenLid has no accounts, telemetry, network client, remote logging, or automatic updates.
 
-When the user enables the live effect, ScreenCaptureKit captures the built-in display, excluding OpenLid itself. Other visible applications and documents on that display are included. Audio capture is disabled. Frames are held in memory and rendered locally through Core Image and Metal; no recording output or file writer exists. Pausing stops the stream and releases the retained frame after pending capture callbacks drain.
+Live mode requests Screen Recording permission. ScreenCaptureKit captures the built-in display while excluding only the effect overlay. Other visible windows, including OpenLid settings, are part of the capture. Frames remain in memory and are rendered locally with Metal and Metal Performance Shaders. Audio capture is disabled. No screenshot, video, or audio writer is used by live mode.
 
-The appearance preview is drawn from local geometric artwork and does not capture the screen. Sensor discovery reads the Apple lid orientation sensor; live mode polls it at 30 Hz. The app does not request Accessibility, Input Monitoring, microphone, or camera permissions.
+The preview and render diagnostics use generated artwork, never desktop pixels. The renderer diagnostic writes only generated artwork to /tmp/openlid-neutral-render-check.png.
 
-Appearance preferences are stored in UserDefaults under the app's bundle identifier, `org.openlid.OpenLid`. The enabled state is never persisted. Diagnostic output includes macOS version, permission status, and an angle or unsupported reason. Diagnostic output should be reviewed before sharing it publicly.
+The Apple lid orientation sensor is read at 60 Hz on a serial background queue while enabled. Pause hides the overlay immediately, cancels pending startup, stops the capture stream, drains frame callbacks, and releases the retained frame. Sleep, lock, session changes, display changes, sensor failure, capture failure, and a 15-second active timeout pause the effect. Launch starts paused.
 
-macOS owns the Screen Recording permission prompt and its own capture indicators. Revoking access in System Settings prevents subsequent capture. This document describes the source implementation; operating-system internals and other applications are outside OpenLid's control.
+Appearance preferences persist in UserDefaults under org.openlid.OpenLid. The app does not request Accessibility, Input Monitoring, microphone, or camera access. Permission grants and capture indicators are controlled by macOS. Diagnostics read permission state without requesting it and include the sensor angle and macOS version. This describes the current local source; published builds may differ.

@@ -13,6 +13,6 @@
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSScreenCaptureUsageDescription</key><string>OpenLid uses live screen frames to render a fold on your built-in display. Frames stay in memory and are never recorded or uploaded.</string>
+    <key>NSScreenCaptureUsageDescription</key><string>OpenLid processes desktop frames locally to render the lid effect. Frames are never saved or uploaded.</string>
 </dict>
 </plist>

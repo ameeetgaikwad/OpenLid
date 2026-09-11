@@ -67,9 +67,9 @@ struct SettingsView: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(page == "Appearance" ? "Desktop, in motion." : page == "General" ? "Make yourself at home." : "Small app. Open possibilities.")
+                Text(page == "Appearance" ? "One continuous motion." : page == "General" ? "Make yourself at home." : "Small app. Open possibilities.")
                     .font(.system(size: 28, weight: .medium, design: .serif))
-                Text(page == "Appearance" ? "A softer landing for every close." : page == "General" ? "Your Mac, your controls, your permission." : "A freely available experiment in everyday delight.")
+                Text(page == "Appearance" ? "A softer landing for every close." : page == "General" ? "Your Mac, your controls." : "A freely available experiment in everyday delight.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
             Spacer()
@@ -82,10 +82,13 @@ struct SettingsView: View {
     private var appearance: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(spacing: 0) {
-                FoldPreview(angle: model.previewAngle, settings: model.settings)
+                EffectPreview(angle: model.previewAngle, settings: model.settings)
+                    .aspectRatio(16.0 / 10, contentMode: .fit)
                     .frame(height: 210)
+                    .frame(maxWidth: .infinity)
+                    .background(Color(white: 0.90))
                 HStack(spacing: 14) {
-                    Text("TRY THE FOLD").font(.system(size: 9, weight: .medium, design: .monospaced)).tracking(1)
+                    Text("TRY THE EFFECT").font(.system(size: 9, weight: .medium, design: .monospaced)).tracking(1)
                     Slider(value: $model.previewAngle, in: 5...140, step: 1)
                         .accessibilityLabel("Preview lid angle")
                     Text("\(Int(model.previewAngle))°").font(.system(size: 12, design: .monospaced))
@@ -108,7 +111,7 @@ struct SettingsView: View {
             }.padding(.top, 2)
             HStack {
                 Image(systemName: "hand.draw").foregroundStyle(accent)
-                Text("Preview only. Drag the slider to explore—no screen access needed.")
+                Text("Preview uses the live renderer with generated artwork. No capture needed.")
                     .font(.system(size: 10)).foregroundStyle(.secondary)
             }
         }
@@ -122,7 +125,7 @@ struct SettingsView: View {
                     .font(.system(size: 18, weight: .light)).foregroundStyle(selected ? accent : ink.opacity(0.6))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(style.rawValue).font(.system(size: 12, weight: .semibold))
-                    Text(style == .paper ? "Light & fluid" : style == .dusk ? "Deep & quiet" : "Soft & diffused")
+                    Text(style == .paper ? "Neutral & clear" : style == .dusk ? "Deeper shadow" : "Softer focus")
                         .font(.system(size: 9)).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
@@ -150,10 +153,10 @@ struct SettingsView: View {
     private var general: some View {
         VStack(alignment: .leading, spacing: 22) {
             infoRow("lid / sensor", title: "Hardware", detail: model.sensorStatus, icon: "laptopcomputer")
-            Button("Recheck hardware & permission") { model.checkSensor() }.disabled(model.enabled || model.busy)
+            Button("Recheck hardware") { model.checkSensor() }.disabled(model.enabled || model.busy)
             Divider()
-            infoRow("privacy / permission", title: "Screen Recording", detail: model.permissionGranted ? "Access granted. Capture runs only while the live effect is enabled." : "Allow OpenLid to capture your built-in display for the live effect. Frames stay in memory on your Mac.", icon: "lock.shield")
-            Button("Open permission helper & Settings…") { model.openPermissionSettings() }
+            infoRow("privacy", title: "Local screen capture", detail: "Live mode needs Screen Recording access. Frames are processed on this Mac, never saved or uploaded. The preview uses generated artwork.", icon: "lock.shield")
+            Button("Open Screen Recording settings") { model.openPermissionSettings() }
             Divider()
             HStack {
                 Text("Clear the effect above").font(.system(size: 12, weight: .medium))
@@ -161,9 +164,9 @@ struct SettingsView: View {
                 Text("\(Int(model.settings.clearAngle))°").monospacedDigit()
             }
             Slider(value: $model.settings.clearAngle, in: 45...140, step: 1).accessibilityLabel("Clear angle")
-            Text("A fully open lid restores the normal desktop. Capture pauses on sleep, lock, display changes, errors, or after 15 seconds of continuous folding.")
+            Text("A fully open lid restores the normal desktop. The effect pauses on sleep, lock, display changes, sensor errors, or after 15 seconds continuously active.")
                 .font(.system(size: 11)).foregroundStyle(.secondary).lineSpacing(4)
-            Button("Reset appearance") { model.settings = FoldSettings() }
+            Button("Use neutral baseline") { model.settings = FoldSettings() }
         }
         .padding(22).background(.white.opacity(0.6), in: RoundedRectangle(cornerRadius: 14))
     }
@@ -183,7 +186,7 @@ struct SettingsView: View {
             Image(systemName: "macbook.gen2").font(.system(size: 62, weight: .ultraLight)).foregroundStyle(accent)
             Text("Built to be opened.")
                 .font(.system(size: 32, weight: .regular, design: .serif))
-            Text("OpenLid is an independent, open-source macOS utility inspired by the idea of a desktop that moves with your MacBook lid. Native Swift. Metal-backed rendering. No accounts, subscriptions, or telemetry.")
+            Text("OpenLid is an independent, open-source macOS utility inspired by the idea of a desktop that moves with your MacBook lid. Native Swift. ScreenCaptureKit and Metal rendering. No accounts, subscriptions, or telemetry.")
                 .font(.system(size: 13)).lineSpacing(6)
             Divider()
             HStack(spacing: 30) {
@@ -216,50 +219,5 @@ struct SettingsView: View {
                     .foregroundStyle(.white).background(ink, in: Capsule())
             }.buttonStyle(.plain).disabled(model.busy)
         }.padding(.top, 14).overlay(alignment: .top) { Divider() }
-    }
-}
-
-private struct FoldPreview: View {
-    let angle: Double
-    let settings: FoldSettings
-    private var state: FoldState { FoldState(angle: angle, settings: settings) }
-
-    var body: some View {
-        ZStack {
-            Color(red: 0.88, green: 0.90, blue: 0.85)
-            Circle().fill(.white.opacity(0.2)).frame(width: 350).offset(x: 200, y: -80)
-            VStack(spacing: 0) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 9).fill(ink)
-                    landscape.padding(5)
-                    RoundedRectangle(cornerRadius: 3).fill(ink).frame(width: 38, height: 7).frame(maxHeight: .infinity, alignment: .top).padding(.top, 4)
-                }
-                .frame(width: 270, height: 166)
-                .blur(radius: state.blurRadius / 5)
-                .overlay(Color.black.opacity(state.darkness).clipShape(RoundedRectangle(cornerRadius: 9)))
-                // Negative X rotation brings the top edge toward the viewer as the lid closes.
-                .rotation3DEffect(.degrees(-state.progress * 76), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: settings.perspective * 0.7)
-                .shadow(color: ink.opacity(0.18), radius: 10, x: 0, y: 8)
-                RoundedRectangle(cornerRadius: 3).fill(Color(red: 0.66, green: 0.70, blue: 0.66)).frame(width: 292, height: 5)
-            }.padding(.top, 4)
-            Text("YOUR DESKTOP, REIMAGINED").font(.system(size: 8, weight: .medium, design: .monospaced))
-                .tracking(1.8).foregroundStyle(ink.opacity(0.4)).frame(maxHeight: .infinity, alignment: .top).padding(.top, 13)
-        }.clipped().accessibilityElement(children: .ignore)
-            .accessibilityLabel("Fold preview at \(Int(angle)) degrees, \(settings.style.rawValue) style")
-    }
-
-    private var landscape: some View {
-        GeometryReader { geometry in
-            ZStack {
-                LinearGradient(colors: [Color(red: 0.75, green: 0.84, blue: 0.78), Color(red: 0.93, green: 0.89, blue: 0.72)], startPoint: .top, endPoint: .bottom)
-                Circle().fill(Color(red: 0.89, green: 0.47, blue: 0.28)).frame(width: 48, height: 48).offset(x: 62, y: -28)
-                Ellipse().fill(Color(red: 0.32, green: 0.50, blue: 0.42)).frame(width: 340, height: 150).rotationEffect(.degrees(-14)).offset(x: -55, y: 87)
-                Ellipse().fill(Color(red: 0.19, green: 0.36, blue: 0.31)).frame(width: 320, height: 160).rotationEffect(.degrees(24)).offset(x: 100, y: 103)
-                VStack(spacing: 5) {
-                    Text("Take it slow.").font(.system(size: 23, weight: .regular, design: .serif))
-                    Text("A LITTLE ROOM TO BREATHE").font(.system(size: 6, weight: .medium, design: .monospaced)).tracking(1.5)
-                }.foregroundStyle(.white).offset(y: -6)
-            }.frame(width: geometry.size.width, height: geometry.size.height).clipped().clipShape(RoundedRectangle(cornerRadius: 5))
-        }
     }
 }

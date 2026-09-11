@@ -40,7 +40,9 @@ struct FoldCoreTests {
         suite.testCorruptPreferencesAreSanitized()
         suite.testStylesChangeTheIntendedDimension()
         suite.testZeroIntensityDisablesBlurAndShadow()
-        print("\(failures == 0 ? "PASS" : "FAIL"): 6 checks, \(assertions) assertions, \(failures) failures")
+        suite.testMotionSmoothing()
+        suite.testProjectionNeverShrinks()
+        print("\(failures == 0 ? "PASS" : "FAIL"): 8 checks, \(assertions) assertions, \(failures) failures")
         exit(failures == 0 ? 0 : 1)
     }
     func testSensorReportsRejectMalformedAndOutOfRangeData() {
@@ -73,7 +75,7 @@ struct FoldCoreTests {
             let state = FoldState(angle: angle, settings: FoldSettings())
             XCTAssertGreaterThanOrEqual(state.progress, previous)
             XCTAssertTrue((0...1).contains(state.progress))
-            XCTAssertTrue((0.08...1).contains(state.height))
+            XCTAssertTrue((1...2.000001).contains(state.height))
             XCTAssertTrue((0...0.24).contains(state.inset))
             XCTAssertTrue((0...0.85).contains(state.darkness))
             previous = state.progress
@@ -120,6 +122,38 @@ struct FoldCoreTests {
             XCTAssertEqual(state.darkness, 0)
             XCTAssertEqual(state.inset, 0)
         }
+    }
+
+    func testProjectionNeverShrinks() {
+        for style in FoldStyle.allCases {
+            for strength in [0.0, 0.5, 1.0] {
+                var settings = FoldSettings(); settings.style = style; settings.perspective = strength
+                var previousHeight = 1.0
+                for angle in stride(from: 100.0, through: 0, by: -1) {
+                    let state = FoldState(angle: angle, settings: settings)
+                    XCTAssertGreaterThanOrEqual(state.height, previousHeight)
+                    XCTAssertGreaterThanOrEqual(state.height, 1)
+                    XCTAssertGreaterThanOrEqual(state.inset, 0)
+                    if strength == 0 { XCTAssertEqual(state.height, 1); XCTAssertEqual(state.inset, 0) }
+                    previousHeight = state.height
+                }
+            }
+        }
+    }
+
+    func testMotionSmoothing() {
+        var a = LidMotion(angle: 100), b = LidMotion(angle: 100)
+        for _ in 0..<30 { a.update(target: 30, elapsed: 1.0 / 30) }
+        for _ in 0..<60 { b.update(target: 30, elapsed: 1.0 / 60) }
+        XCTAssertTrue(abs(a.angle - b.angle) < 0.001)
+        var previous = b.angle
+        for _ in 0..<60 {
+            b.update(target: 120, elapsed: 1.0 / 60)
+            XCTAssertGreaterThanOrEqual(b.angle, previous)
+            XCTAssertTrue(b.angle <= 120)
+            previous = b.angle
+        }
+        XCTAssertEqual(b.angle, 120)
     }
 
 }

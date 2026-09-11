@@ -1,6 +1,6 @@
 # Security reporting
 
-OpenLid processes screen content, so unintended recording, disclosure, capture after pause, permission bypass, or unsafe overlay behavior deserve careful handling.
+OpenLid processes desktop frames locally. Unintended recording or disclosure, capture after pause, recursive capture, unsafe overlays, and excessive sensor access deserve careful handling.
 
 ## Report privately
 
@@ -14,4 +14,4 @@ A useful private report includes the affected commit or build, macOS version, ha
 
 The project is an unreleased alpha. There are no supported production releases or guaranteed response times yet. Security fixes will initially target the development branch; older local builds should be rebuilt after a fix is published.
 
-Do not test against other people's devices or data. If an issue affects capture safety, pause or quit OpenLid until it is resolved.
+Do not test against other people's devices or data. If an issue affects overlay safety, pause or quit OpenLid until it is resolved.

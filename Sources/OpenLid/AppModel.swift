@@ -14,20 +14,21 @@ final class AppModel: ObservableObject {
     @Published var previewAngle = 72.0
     @Published private(set) var sensorAngle: Double?
     @Published private(set) var sensorStatus = "Checking lid sensor…"
-    @Published private(set) var status = "Ready to preview. Your screen is not being captured."
+    @Published private(set) var status = "Ready to preview. Live mode uses local screen capture."
     @Published private(set) var enabled = false
     @Published private(set) var busy = false
-    @Published private(set) var permissionGranted = false
-    var showPermissionHelper: (() -> Void)?
 
-    private let sensor = LidSensor()
+    private let sensor = SensorSampler()
+    @Published private(set) var permissionGranted = false
     private var renderer: FoldRenderer?
     private var capture: DesktopCapture?
-    private var overlay: NSPanel?
-    private var timer: Timer?
     private var startTask: Task<Void, Never>?
     private var generation = 0
-    private var failedReads = 0
+    private var overlay: NSPanel?
+    private var timer: Timer?
+    private var motion = LidMotion(angle: 180)
+    private var lastTick = ProcessInfo.processInfo.systemUptime
+    private var lastAnglePublication = 0.0
     private var effectSince: Date?
     private var observers: [NSObjectProtocol] = []
     private var lockObserver: NSObjectProtocol?
@@ -66,48 +67,40 @@ final class AppModel: ObservableObject {
 
     func checkSensor() {
         guard !enabled, !busy else { return }
-        sensorAngle = sensor.connect()
-        sensorStatus = sensorAngle.map { "Lid sensor available · \(Int($0))°" }
-            ?? "No readable lid sensor. Manual preview is still available."
-        sensor.disconnect()
-        permissionGranted = CGPreflightScreenCaptureAccess()
+        busy = true
+        let run = generation
+        Task { [weak self] in
+            guard let self else { return }
+            let angle = await self.sensor.probe()
+            defer { self.busy = false }
+            guard self.generation == run else { return }
+            self.sensorAngle = angle
+            self.sensorStatus = angle.map { "Lid sensor available · \(Int($0))°" }
+                ?? "No readable lid sensor. Manual preview is still available."
+        }
     }
 
     func openPermissionSettings() {
-        // Only invoked by a clearly labelled user action. Never requests Accessibility.
-        showPermissionHelper?()
         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
-    }
-
-    func refreshPermission() {
-        permissionGranted = CGPreflightScreenCaptureAccess()
     }
 
     func enable() {
         guard !enabled, !busy else { return }
         permissionGranted = CGPreflightScreenCaptureAccess()
-        guard permissionGranted else {
-            status = "Screen Recording access is required for the live effect. Allow OpenLid in System Settings, then relaunch."
-            // macOS presents its normal permission flow only after this explicit button click.
-            _ = CGRequestScreenCaptureAccess()
-            openPermissionSettings()
-            return
+        if !permissionGranted {
+            permissionGranted = CGRequestScreenCaptureAccess()
+            if !permissionGranted {
+                status = "Allow OpenLid in Screen Recording settings, then quit and reopen it."
+                return
+            }
+            // Continue only if the permission grant is immediately usable.
         }
-        guard let angle = sensor.connect() else {
-            sensorStatus = "No readable lid sensor. Try Recheck hardware; this model may be unsupported."
-            status = "Live effect unavailable. Use the manual preview to explore styles."
-            sensor.disconnect()
-            return
-        }
-        sensorAngle = angle
         guard let screen = NSScreen.screens.first(where: { CGDisplayIsBuiltin($0.displayID) != 0 }) else {
-            sensor.disconnect()
             status = "Open the built-in MacBook display to enable the effect."
             return
         }
         guard let renderer = FoldRenderer() else {
-            sensor.disconnect()
-            status = "A Metal-capable graphics device is required."
+            status = "Metal rendering is unavailable on this Mac."
             return
         }
         let panel = NSPanel(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -115,23 +108,23 @@ final class AppModel: ObservableObject {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         panel.ignoresMouseEvents = true
         panel.hidesOnDeactivate = false
-        panel.isOpaque = true
-        panel.backgroundColor = .black
-        panel.contentView = renderer.view
-        renderer.view.frame = CGRect(origin: .zero, size: screen.frame.size)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        // The panel remains empty and transparent until it is excluded from capture.
         generation += 1
         let run = generation
-        renderer.onFrameExpired = { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self, self.generation == run else { return }
-                self.pause(message: "Capture stopped updating. Paused to restore your desktop.")
-            }
-        }
         let session = DesktopCapture(renderer: renderer)
         session.onFailure = { [weak self] message in
             Task { @MainActor [weak self] in
                 guard let self, self.generation == run else { return }
                 self.pause(message: "Capture stopped: \(message)")
+            }
+        }
+        renderer.onFrameExpired = { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self, self.generation == run else { return }
+                self.pause(message: "Capture stopped updating. Overlay hidden.")
             }
         }
         self.renderer = renderer
@@ -141,15 +134,31 @@ final class AppModel: ObservableObject {
         status = "Starting local screen capture…"
         startTask = Task { [weak self] in
             do {
-                try await session.start(displayID: screen.displayID)
-                guard let self, self.generation == run, !Task.isCancelled else { return }
+                guard let self else { return }
+                let firstAngle = await self.sensor.start()
+                guard self.generation == run, !Task.isCancelled else { return }
+                guard let angle = firstAngle else {
+                    self.pause(message: "No readable lid sensor. Live effect unavailable.")
+                    return
+                }
+                self.sensorAngle = angle
+                let pixelSize = CGSize(width: screen.frame.width * screen.backingScaleFactor,
+                                       height: screen.frame.height * screen.backingScaleFactor)
+                try await session.start(displayID: screen.displayID, overlay: panel, pixelSize: pixelSize)
+                guard self.generation == run, !Task.isCancelled else { return }
+                renderer.view.frame = CGRect(origin: .zero, size: screen.frame.size)
+                panel.contentView = renderer.view
+                self.motion = LidMotion(angle: max(angle, self.settings.sanitized().clearAngle))
+                self.lastTick = ProcessInfo.processInfo.systemUptime
                 self.enabled = true
                 self.busy = false
-                self.status = "Following your lid. Pause from the menu bar at any time."
-                self.failedReads = 0
-                self.timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
+                self.lastAnglePublication = 0
+                self.status = "Following your lid. Capture stays on this Mac."
+                let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
                     Task { @MainActor [weak self] in self?.tick() }
                 }
+                self.timer = timer
+                RunLoop.main.add(timer, forMode: .common)
             } catch {
                 guard let self, self.generation == run else { return }
                 self.pause(message: "Could not start capture: \(error.localizedDescription)")
@@ -159,36 +168,45 @@ final class AppModel: ObservableObject {
 
     private func tick() {
         guard enabled, let renderer else { return }
-        guard let angle = sensor.read() else {
-            failedReads += 1
-            if failedReads >= 5 { pause(message: "Lid sensor stopped responding. Paused to restore your desktop.") }
+        let now = ProcessInfo.processInfo.systemUptime
+        let sample = sensor.snapshot()
+        guard sample.failures < 5, now - sample.time < 0.5, let angle = sample.angle else {
+            pause(message: "Lid sensor stopped responding. Overlay hidden.")
             return
         }
-        failedReads = 0
-        sensorAngle = angle
-        let state = FoldState(angle: angle, settings: settings)
+        if now - lastAnglePublication >= 0.25 && sensorAngle != angle {
+            sensorAngle = angle
+            lastAnglePublication = now
+        }
+        let delta = min(0.1, max(0, now - lastTick))
+        lastTick = now
+        motion.update(target: angle, elapsed: delta)
+        let state = FoldState(angle: motion.angle, settings: settings)
         renderer.state = state
         if state.isActive && renderer.hasFrame {
             if effectSince == nil { effectSince = Date() }
             if let effectSince, Date().timeIntervalSince(effectSince) > 15 {
-                pause(message: "Paused after 15 seconds of continuous folding. Reopen the lid, then enable again.")
+                pause(message: "Paused after 15 seconds of continuous effect. Reopen the lid, then enable again.")
                 return
             }
-            renderer.view.isPaused = false
-            overlay?.orderFrontRegardless()
+            if renderer.view.isPaused {
+                // Render while hidden so the first visible frame already uses the current angle.
+                renderer.view.draw()
+                renderer.view.isPaused = false
+            }
+            if overlay?.isVisible == false { overlay?.orderFrontRegardless() }
         } else {
             effectSince = nil
-            overlay?.orderOut(nil)
+            if overlay?.isVisible == true { overlay?.orderOut(nil) }
             renderer.view.isPaused = true
         }
     }
 
-    func pause(message: String = "Paused. Your screen is not being captured.") {
+    func pause(message: String = "Paused. Screen capture stopped.") {
         generation += 1
         enabled = false
         timer?.invalidate()
         timer = nil
-        sensor.disconnect()
         overlay?.orderOut(nil)
         renderer?.view.isPaused = true
         effectSince = nil
@@ -201,14 +219,15 @@ final class AppModel: ObservableObject {
         pendingStart?.cancel()
         startTask = nil
         Task { [weak self] in
-            // Await an in-flight start before stopping; rapid pause cannot orphan a stream.
             await pendingStart?.value
             await previous.stop()
+            await self?.sensor.stop()
             self?.renderer = nil
             self?.overlay = nil
             self?.busy = false
         }
     }
+
 }
 
 extension NSScreen {

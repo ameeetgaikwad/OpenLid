@@ -33,17 +33,42 @@ public struct FoldState: Equatable {
     public let height: Double
     public let blurRadius: Double
     public let darkness: Double
-    public var isActive: Bool { progress > 0.005 }
+    public var isActive: Bool { progress > 0.001 }
 
     public init(angle: Double, settings: FoldSettings) {
         let s = settings.sanitized()
         let angle = FoldSettings.clamp(angle, 0...180, fallback: 180)
         let linear = max(0, min(1, 1 - angle / s.clearAngle))
         progress = linear * linear * (3 - 2 * linear)
-        inset = progress * s.perspective * 0.24
-        height = max(0.08, 1 - progress * (0.6 + s.perspective * 0.3))
-        blurRadius = progress * s.blur * (s.style == .mist ? 36 : 12)
-        darkness = min(0.85, progress * s.shade * (s.style == .dusk ? 1.4 : 0.65))
+        // Expand toward the viewer to counter foreshortening, never collapse into a black gap.
+        // This bounded model is tunable, not a claim of calibrated eye tracking.
+        let rotation = progress * Double.pi / 3
+        height = 1 + (1 / cos(rotation) - 1) * s.perspective
+        inset = sin(rotation) * s.perspective * 0.18
+        let softening = progress * progress
+        switch s.style {
+        case .paper:
+            blurRadius = softening * s.blur * 10
+            darkness = progress * s.shade * 0.20
+        case .dusk:
+            blurRadius = softening * s.blur * 12
+            darkness = progress * s.shade * 0.65
+        case .mist:
+            blurRadius = softening * s.blur * 28
+            darkness = progress * s.shade * 0.12
+        }
+    }
+}
+
+public struct LidMotion {
+    public private(set) var angle: Double
+    public init(angle: Double) { self.angle = FoldSettings.clamp(angle, 0...180, fallback: 180) }
+    public mutating func update(target: Double, elapsed: Double) {
+        let target = FoldSettings.clamp(target, 0...180, fallback: 180)
+        let elapsed = FoldSettings.clamp(elapsed, 0...0.1, fallback: 0)
+        let response = target > angle ? 0.055 : 0.10
+        angle += (target - angle) * (1 - exp(-elapsed / response))
+        if abs(angle - target) < 0.05 { angle = target }
     }
 }
 

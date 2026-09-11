@@ -2,7 +2,7 @@ import Foundation
 import IOKit.hid
 import FoldCore
 
-/// Read-only feature reports. This implementation polls at 30 Hz only while enabled.
+/// Read-only feature reports. This implementation polls at 60 Hz only while enabled.
 /// The HID interface is undocumented by Apple and is not available on every MacBook.
 final class LidSensor {
     private var manager: IOHIDManager?

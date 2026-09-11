@@ -1,21 +1,14 @@
-OpenLid — alpha build
+OpenLid: alpha build
 
-An independent, MIT-licensed macOS app that tilts, blurs, and shades your
-desktop as you lower your MacBook lid.
+An independent MIT-licensed macOS utility with a neutral lid-driven perspective
+effect, subtle blur, and shading. Paper, Dusk, and Mist share the same motion.
 
-This build is for development testing. It is ad-hoc signed, not Developer ID
-signed or notarized. macOS may block a downloaded copy. Do not disable macOS
-security protections to run it; building from the public source is an alternative.
+Live mode needs Screen Recording access. Desktop frames stay in memory and are
+processed locally. No audio, saved captures, accounts, or telemetry.
 
-On a validated distribution build, installation is simply dragging OpenLid.app
-to Applications, then opening it from Applications. Keep the app in a stable
-location before granting Screen Recording permission.
+Requires macOS 14+ and a supported lid sensor. This local build is ad-hoc signed,
+not notarized. Building from source is an alternative to downloaded binaries.
+Do not disable macOS security protections. Physical seated-view tuning and
+live lifecycle checks remain separate from the generated preview.
 
-Requires macOS 14+ and a supported MacBook for the live effect. The manual
-preview needs no screen permission. Hardware availability varies. Physical
-lid behavior and live capture lifecycle validation remain pending for this alpha.
-
-Source and build instructions: https://github.com/ameeetgaikwad/OpenLid
-Privacy: https://github.com/ameeetgaikwad/OpenLid/blob/main/PRIVACY.md
-
-No account. No telemetry. Frames stay on your Mac.
+Source: https://github.com/ameeetgaikwad/OpenLid

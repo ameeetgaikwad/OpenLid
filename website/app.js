@@ -6,7 +6,7 @@ const wallpaper = document.getElementById('wallpaper');
 const content = document.querySelector('.desktop-content');
 const shade = document.getElementById('shade');
 const buttons = [...document.querySelectorAll('[data-style]')];
-let style = 'paper';
+let style = 'mist';
 function render() {
   const degrees = Number(angle.value);
   const linear = Math.max(0, Math.min(1, 1 - degrees / 100));

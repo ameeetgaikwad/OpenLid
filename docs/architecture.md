@@ -1,26 +1,28 @@
 # Architecture
 
-OpenLid is a dependency-free Swift package with a native AppKit entry point and SwiftUI settings window. The build script wraps the executable in a standard app bundle.
+OpenLid is a dependency-free Swift package with AppKit lifecycle and SwiftUI settings.
 
 ## Data flow
 
-`Apple HID → LidSensor → AppModel → FoldState → FoldRenderer`
+Apple HID -> LidSensor -> LidMotion -> FoldState -> FoldRenderer
+ScreenCaptureKit -> retained pixel buffer -> CVMetalTextureCache -> compiled Metal / MPS blur -> display overlay
 
-`ScreenCaptureKit → one retained pixel buffer → FoldRenderer → Metal drawable → built-in-display overlay`
+- FoldCore sanitizes settings and sensor data. The inverse perspective expands the top edge and vertical extent around the fixed bottom edge. Cropping fills the output, avoiding the former shrinking transform's black gap. This is a tunable bounded approximation, not eye-tracked physical calibration.
+- Paper is the neutral baseline. Dusk increases shadow and Mist increases blur. All three share geometry and preserve color; there are no color washes. Softening grows late in the close motion. Shading is a neutral vertical gradient.
+- LidMotion uses elapsed-time exponential smoothing with faster reopening. SensorSampler performs all recurring HID reads on a serial background queue; the animation loop reads a locked snapshot. Sensor sampling and display updates target 60 Hz. The settings UI receives changed angles at most four times per second.
+- DesktopCapture temporarily registers an empty transparent effect panel, then excludes that exact window by ID and owning process. It does not exclude other OpenLid windows. Failure to identify the overlay stops startup. Capture is bounded at 3840 pixels wide, up to 60 fps, three queued buffers, no audio.
+- AppModel retains the panel, renderer, stream, and startup task. A generation token rejects late callbacks. Pause hides immediately and waits for cancelled startup before stopping/draining that session; a new enable is blocked until cleanup completes. Capture must provide an initial frame within three seconds.
+- FoldRenderer maps a retained CVPixelBuffer directly to a Metal texture. MetalEffectPipeline compiles inverse-perspective and neutral-shading shaders once and caches Gaussian blur kernels in quarter-pixel sigma steps. Two reusable intermediate textures support MPS blur. At most two frames are in flight; extra work is dropped rather than queued. Capture requests sRGB and the shader performs linear-light processing. The original Core Image graph is retained only as a regression reference. Overlay ordering changes only on visibility transitions.
+- EffectPreview renders generated artwork through the same FoldRenderer graph as live mode. It redraws only when its own effect state changes. The preview matches screen-space math, not the physical viewing angle of a tilted MacBook.
 
-- **FoldCore** is pure deterministic math: normalized preferences, bounded fold progress, style values, and HID report decoding. Sensor degrees are little-endian bytes 1–2 of feature report 1 and valid only in 0...180. Nonfinite angles clear the effect.
-- **LidSensor** searches for vendor `0x05AC`, product `0x8104`, sensor usage page `0x20`, orientation usage `0x8A`. It opens non-exclusively, reads only, and closes handles on teardown. This is an undocumented hardware interface; runtime availability is the source of truth.
-- **DesktopCapture** filters out the entire OpenLid process before starting a stream. No fallback captures the overlay. Stream output runs on a serial queue. The latest pixel buffer replaces the previous one under a lock, so render work cannot enqueue an unbounded frame backlog.
-- **FoldRenderer** wraps Core Image's perspective projection, Gaussian blur, and shading with a Metal-backed `CIContext`. The projected frame sits over black within a click-through `NSPanel`. The panel is below the system menu bar and closes with the effect. The cursor stays untransformed so the menu-bar pause remains discoverable.
-- **AppModel** coordinates capture startup, invalidation, teardown, preferences, and UI state on the main actor. A generation counter invalidates pending startup work and delayed renderer/stream callbacks; callbacks hop to the main actor and check their captured generation before changing the app. Pause waits for startup to settle before stopping that stream. New enables are disabled until teardown finishes. The renderer rejects stale capture frames.
-- **SettingsView** uses original generated landscape artwork. Its manual preview does not capture the desktop or use simulated values as hardware input.
+## Lifecycle and limits
 
-## Resource and lifecycle bounds
+Five bad sensor reads, capture errors, sleep, lock, session resignation, display changes, or 15 seconds continuously active pause. Escape pauses only while OpenLid has focus. It does not prevent normal lid-close sleep.
 
-Capture uses SDR BGRA, maximum 1920px width, 30fps, three queued buffers, and no audio. Rendering pauses while the lid is above the clear threshold, but capture and 30 Hz sensor polling continue while enabled for responsiveness. There is no claim of zero idle power use.
+## Validation
 
-Five consecutive bad sensor reads pause the effect. Blank/suspended/stopped capture output, a stream error, stale frames, sleep, lock, session change, or display topology change also pause. A 15-second active-fold timeout is a conservative alpha safeguard. Restart is explicit; no automatic capture resume after waking or unlocking.
+Core checks cover bounds, monotonic geometry, frame-rate-independent smoothing, settings, and sensor parsing. --render-check executes the production Metal graph and checks opaque full coverage, neutral RGB values, and zero-effect identity. It saves a generated comparison sheet. Real seated-view matching, permission behavior, and physical lifecycle scenarios require separate live validation.
 
-## Packaging
+## Performance diagnostics
 
-SwiftPM builds the host architecture. `Resources/Info.plist` supplies the stable bundle identifier, macOS 14 minimum, and menu-bar-only policy. Local ad-hoc signing allows local testing; production distribution needs Developer ID signing, hardened runtime evaluation, notarization, and a tested release process.
+--performance-check exercises two real sensor sampler start/sample/stop cycles, measures 60 synchronous HID reads, and benchmarks 90 warmed-up frames of the actual Metal pipeline at 2560x1664 with generated artwork, Mist, 70 percent softness, and changing angles. It does not capture the screen. CPU submission, GPU, and completion timings exclude capture, window presentation, and physical motion. See performance.md for the measured comparison.

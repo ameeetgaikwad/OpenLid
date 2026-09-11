@@ -4,6 +4,11 @@ import SwiftUI
 @main
 struct OpenLidApp {
     @MainActor static func main() {
+        if CommandLine.arguments.contains("--performance-check") {
+            Task { @MainActor in exit(await PerformanceCheck.run() ? 0 : 1) }
+            RunLoop.main.run()
+            return
+        }
         if CommandLine.arguments.contains("--render-check") {
             exit(RenderCheck.run() ? 0 : 1)
         }
@@ -11,6 +16,7 @@ struct OpenLidApp {
             let sensor = LidSensor()
             if let angle = sensor.connect() { print("lid_angle_degrees: \(angle)") }
             else { print("unsupported: No readable Apple orientation HID sensor (05ac:8104, usage 20:8a). Manual preview available.") }
+            print("renderer: metal_capture")
             print("screen_capture_permission: \(CGPreflightScreenCaptureAccess() ? "granted" : "not_granted")")
             print("screen_capture_started: false")
             print("macos: \(ProcessInfo.processInfo.operatingSystemVersionString)")
@@ -31,17 +37,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var window: NSWindow!
     private var toggleItem: NSMenuItem!
-    private let permissionHelper = PermissionHelper()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model = AppModel()
-        model.showPermissionHelper = { [weak self] in
-            guard let self else { return }
-            self.permissionHelper.show(model: self.model)
-        }
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = NSImage(systemSymbolName: "laptopcomputer", accessibilityDescription: "OpenLid")
-        statusItem.button?.toolTip = "OpenLid — desktop, in motion"
+        statusItem.button?.toolTip = "OpenLid: neutral lid effects"
         let menu = NSMenu()
         menu.delegate = self
         let settings = NSMenuItem(title: "Open OpenLid…", action: #selector(showSettings), keyEquivalent: ",")
