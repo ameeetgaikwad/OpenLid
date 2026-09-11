@@ -99,6 +99,8 @@ struct FoldCoreTests {
 
     func testStylesChangeTheIntendedDimension() {
         var settings = FoldSettings()
+        XCTAssertEqual(settings.style, .mist)
+        settings.style = .paper
         let paper = FoldState(angle: 35, settings: settings)
         settings.style = .dusk
         let dusk = FoldState(angle: 35, settings: settings)

@@ -2,6 +2,10 @@
 
 Changes are recorded here before a release is tagged. This file does not imply that a downloadable release exists.
 
+## 0.1.0-alpha.4 - 2026-09-11
+
+- Start fresh app settings with Mist selected, matching the website. Existing saved style preferences are preserved.
+
 ## 0.1.0-alpha.3 - 2026-09-11
 
 - Replace per-frame Core Image graph work with reusable Metal compute pipelines and cached Metal Performance Shaders blur.

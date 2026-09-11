@@ -6,7 +6,7 @@ public enum FoldStyle: String, CaseIterable, Codable, Identifiable {
 }
 
 public struct FoldSettings: Codable, Equatable {
-    public var style: FoldStyle = .paper
+    public var style: FoldStyle = .mist
     public var perspective: Double = 0.65
     public var blur: Double = 0.35
     public var shade: Double = 0.45
