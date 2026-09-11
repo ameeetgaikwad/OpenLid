@@ -2,6 +2,10 @@
 
 Changes are recorded here before a release is tagged. This file does not imply that a downloadable release exists.
 
+## Unreleased
+
+- Dusk now fades substantially darker; Paper gains a warm matte finish and a shaded crease with minimal blur. Mist remains the default soft-focus style.
+
 ## 0.1.0-alpha.4 - 2026-09-11
 
 - Start fresh app settings with Mist selected, matching the website. Existing saved style preferences are preserved.

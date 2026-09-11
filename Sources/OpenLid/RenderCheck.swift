@@ -51,12 +51,12 @@ enum RenderCheck {
                 var valid = true
                 for offset in stride(from: 0, to: bytes.count, by: 4) {
                     let red = Int(bytes[offset]), green = Int(bytes[offset + 1]), blue = Int(bytes[offset + 2])
-                    if bytes[offset + 3] != 255 || red <= 40 || abs(red - green) > 1 || abs(red - blue) > 1 {
+                    if bytes[offset + 3] != 255 || red <= 10 || (style != .paper && (abs(red - green) > 1 || abs(red - blue) > 1)) {
                         valid = false
                         break
                     }
                 }
-                if state.darkness > 0.02 {
+                if state.darkness > 0.02 && style != .paper {
                     // Bitmap rows are top-to-bottom; the upper edge should be darker.
                     valid = valid && bytes[0] < bytes[(320 * 199) * 4]
                 }
@@ -74,6 +74,22 @@ enum RenderCheck {
             passed = passed && closed == open
             checks += 1
         }
+        // On the same neutral input, each style must visibly affect a different dimension.
+        var stylePixels: [FoldStyle: [UInt8]] = [:]
+        for style in FoldStyle.allCases {
+            var settings = FoldSettings(); settings.style = style
+            stylePixels[style] = render(source, FoldState(angle: 20, settings: settings))
+        }
+        guard let paper = stylePixels[.paper], let dusk = stylePixels[.dusk], let mist = stylePixels[.mist] else { return false }
+        let center = (320 * 100 + 160) * 4
+        let darker = Int(dusk[center + 1]) + 35 < Int(mist[center + 1])
+        let warmer = Int(paper[center + 2]) > Int(paper[center]) + 2
+        let creaseOffset = 138881
+        let highlightOffset = 115841
+        let creased = paper[creaseOffset] < paper[highlightOffset]
+        let stylesDiffer = darker && warmer && creased
+        if !stylesDiffer { print("FAIL style distinction: Dusk darkness or Paper warmth/crease") }
+        passed = passed && stylesDiffer; checks += 1
         // Compare the optimized warp against the original graph using structured artwork.
         for angle in [120.0, 60, 35] {
             var settings = FoldSettings(); settings.blur = 0; settings.shade = 0

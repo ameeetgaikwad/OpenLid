@@ -23,7 +23,7 @@ final class MetalEffectPipeline {
         var params = SIMD4<Float>(Float(state.inset), Float(state.height), radius, Float(state.darkness))
         if radius < 0.125 {
             params.z = 0
-            return dispatch(warp, source: source, destination: destination, params: params, command: command)
+            return dispatch(warp, source: source, destination: destination, params: params, paper: Float(state.paperLight), command: command)
         }
         if intermediate?.width != destination.width || intermediate?.height != destination.height {
             let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba16Float, width: destination.width, height: destination.height, mipmapped: false)
@@ -33,7 +33,7 @@ final class MetalEffectPipeline {
             blurred = device.makeTexture(descriptor: descriptor)
         }
         guard let intermediate, let blurred,
-              dispatch(warp, source: source, destination: intermediate, params: params, command: command) else { return false }
+              dispatch(warp, source: source, destination: intermediate, params: params, paper: Float(state.paperLight), command: command) else { return false }
         // Quarter-pixel sigma steps keep kernel allocation out of steady-state frames.
         let key = max(1, Int((radius * 4).rounded()))
         let blur: MPSImageGaussianBlur
@@ -44,17 +44,19 @@ final class MetalEffectPipeline {
             blurKernels[key] = blur
         }
         blur.encode(commandBuffer: command, sourceTexture: intermediate, destinationTexture: blurred)
-        return dispatch(finish, source: blurred, destination: destination, params: params, command: command)
+        return dispatch(finish, source: blurred, destination: destination, params: params, paper: Float(state.paperLight), command: command)
     }
 
     private func dispatch(_ pipeline: MTLComputePipelineState, source: MTLTexture, destination: MTLTexture,
-                          params: SIMD4<Float>, command: MTLCommandBuffer) -> Bool {
+                          params: SIMD4<Float>, paper: Float, command: MTLCommandBuffer) -> Bool {
         guard let encoder = command.makeComputeCommandEncoder() else { return false }
         var params = params
+        var paper = paper
         encoder.setComputePipelineState(pipeline)
         encoder.setTexture(source, index: 0)
         encoder.setTexture(destination, index: 1)
         encoder.setBytes(&params, length: MemoryLayout<SIMD4<Float>>.stride, index: 0)
+        encoder.setBytes(&paper, length: MemoryLayout<Float>.stride, index: 1)
         let width = pipeline.threadExecutionWidth
         let height = max(1, min(8, pipeline.maxTotalThreadsPerThreadgroup / width))
         encoder.dispatchThreads(MTLSize(width: destination.width, height: destination.height, depth: 1),
@@ -73,13 +75,24 @@ final class MetalEffectPipeline {
         c = max(c, float3(0.0));
         return select(c * 12.92, 1.055 * pow(c, float3(1.0 / 2.4)) - 0.055, c > 0.0031308);
     }
-    float4 shade(float4 color, float yFromTop, float darkness) {
-        float opacity = darkness * mix(1.0, 0.25, yFromTop);
-        return float4(toSRGB(color.rgb * (1.0 - opacity)), 1.0);
+    float4 shade(float4 color, float yFromTop, float darkness, float paper) {
+        float opacity = darkness * mix(1.0, 0.70, yFromTop);
+        float3 rgb = color.rgb * (1.0 - opacity);
+        if (paper > 0.0) {
+            // A warm matte sheet with a broad highlight and a crisp horizontal crease.
+            float luminance = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+            rgb = mix(rgb, float3(luminance), paper * 0.65);
+            float light = 0.28 + 0.35 * sin(yFromTop * 3.14159265);
+            rgb = mix(rgb, float3(1.0, 0.92, 0.76), paper * light);
+            float crease = exp(-pow((yFromTop - 0.54) / 0.035, 2.0));
+            float lip = exp(-pow((yFromTop - 0.49) / 0.025, 2.0));
+            rgb = rgb * (1.0 - paper * crease * 0.40) + paper * lip * 0.10;
+        }
+        return float4(toSRGB(rgb), 1.0);
     }
     kernel void warpDesktop(texture2d<float, access::sample> source [[texture(0)]],
                             texture2d<float, access::write> output [[texture(1)]],
-                            constant float4& p [[buffer(0)]], uint2 gid [[thread_position_in_grid]]) {
+                            constant float4& p [[buffer(0)]], constant float& paper [[buffer(1)]], uint2 gid [[thread_position_in_grid]]) {
         if (gid.x >= output.get_width() || gid.y >= output.get_height()) return;
         float2 uv = (float2(gid) + 0.5) / float2(output.get_width(), output.get_height());
         float q = 2.0 * p.x / (1.0 + 2.0 * p.x);
@@ -90,14 +103,14 @@ final class MetalEffectPipeline {
         float ratio = max(float(source.get_width()) / output.get_width(), float(source.get_height()) / output.get_height());
         float lod = max(0.0, log2(ratio));
         float4 color = float4(toLinear(source.sample(linearSampler, sampleUV, level(lod)).rgb), 1.0);
-        output.write(p.z == 0.0 ? shade(color, uv.y, p.w) : color, gid);
+        output.write(p.z == 0.0 ? shade(color, uv.y, p.w, paper) : color, gid);
     }
     kernel void finishDesktop(texture2d<float, access::read> source [[texture(0)]],
                               texture2d<float, access::write> output [[texture(1)]],
-                              constant float4& p [[buffer(0)]], uint2 gid [[thread_position_in_grid]]) {
+                              constant float4& p [[buffer(0)]], constant float& paper [[buffer(1)]], uint2 gid [[thread_position_in_grid]]) {
         if (gid.x >= output.get_width() || gid.y >= output.get_height()) return;
         float y = (float(gid.y) + 0.5) / float(output.get_height());
-        output.write(shade(source.read(gid), y, p.w), gid);
+        output.write(shade(source.read(gid), y, p.w, paper), gid);
     }
     """
 }

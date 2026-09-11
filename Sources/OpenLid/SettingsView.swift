@@ -125,7 +125,7 @@ struct SettingsView: View {
                     .font(.system(size: 18, weight: .light)).foregroundStyle(selected ? accent : ink.opacity(0.6))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(style.rawValue).font(.system(size: 12, weight: .semibold))
-                    Text(style == .paper ? "Neutral & clear" : style == .dusk ? "Deeper shadow" : "Softer focus")
+                    Text(style == .paper ? "Warm paper fold" : style == .dusk ? "Fade into night" : "Softer focus")
                         .font(.system(size: 9)).foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)

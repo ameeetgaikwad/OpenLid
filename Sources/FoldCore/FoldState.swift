@@ -33,6 +33,7 @@ public struct FoldState: Equatable {
     public let height: Double
     public let blurRadius: Double
     public let darkness: Double
+    public let paperLight: Double
     public var isActive: Bool { progress > 0.001 }
 
     public init(angle: Double, settings: FoldSettings) {
@@ -46,13 +47,14 @@ public struct FoldState: Equatable {
         height = 1 + (1 / cos(rotation) - 1) * s.perspective
         inset = sin(rotation) * s.perspective * 0.18
         let softening = progress * progress
+        paperLight = s.style == .paper ? progress * s.shade : 0
         switch s.style {
         case .paper:
-            blurRadius = softening * s.blur * 10
-            darkness = progress * s.shade * 0.20
+            blurRadius = softening * s.blur * 2
+            darkness = progress * s.shade * 0.10
         case .dusk:
             blurRadius = softening * s.blur * 12
-            darkness = progress * s.shade * 0.65
+            darkness = min(0.96, progress * s.shade * 2.1)
         case .mist:
             blurRadius = softening * s.blur * 28
             darkness = progress * s.shade * 0.12
